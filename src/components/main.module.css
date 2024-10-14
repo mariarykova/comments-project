@@ -1,0 +1,168 @@
+* {
+  margin: 0;
+}
+
+button {
+  cursor: pointer;
+}
+
+.main {
+  background-color: #252525;
+  position: relative;
+  width: 100%;
+  height: 100vh;
+}
+
+.bg_imgs {
+  position: relative;
+  height: 100vh;
+  width: 100%;
+}
+
+.gradientImage {
+  position: absolute;
+  background-image: url("../../public/images/gradient.png");
+  background-repeat: no-repeat;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+.stars_top {
+  background-image: url("../../public/images/stars.png");
+  position: absolute;
+  background-repeat: no-repeat;
+  top: 0;
+  right: 0;
+  width: 163px;
+  height: 227px;
+}
+
+.stars_bottom {
+  background-image: url("../../public/images/stars.png");
+  position: absolute;
+  background-repeat: no-repeat;
+  bottom: 50px;
+  left: 0;
+  width: 163px;
+  height: 227px;
+  z-index: 2;
+}
+
+.content_wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-evenly;
+  height: 100%;
+  z-index: 4;
+  position: relative;
+}
+
+.form {
+  width: 100%;
+  max-width: 548px;
+  color: #fff;
+  text-align: center;
+}
+
+.form h1 {
+  padding-bottom: 20px;
+}
+
+.subtitle {
+  margin-bottom: 50px;
+}
+
+.form_inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+textarea:focus,
+input:focus {
+  outline: none;
+}
+
+.input_wrapper {
+  position: relative;
+  /*color: #252525;*/
+}
+input {
+  height: 48px;
+  width: 100%;
+  background-color: transparent;
+  border: 1px solid #fff;
+  border-radius: 5px;
+  font-weight: 400;
+  font-size: 18px;
+  padding-left: 10px;
+  padding-top: 5px;
+  padding-bottom: 5px;
+}
+span {
+  position: absolute;
+  left: 20px;
+  top: 18px;
+  /*width: 50px;*/
+  background: transparent;
+  text-align: center;
+  pointer-events: none;
+  transition: 0.3s ease all;
+  font-size: 18px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+input:focus + span {
+  position: absolute;
+  left: 10px;
+  top: -9px;
+  background: #252525;
+  text-align: center;
+  transition: 0.3s ease all;
+  font-size: 14px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+.fill {
+  position: absolute;
+  left: 10px;
+  top: -9px;
+  background: #252525;
+  text-align: center;
+  font-size: 14px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+.email {
+  width: 110px;
+}
+
+.button {
+  background: linear-gradient(134deg, #f6b8fd 0%, #316ad7 100%);
+  border-radius: 4px;
+  padding: 20px 220px;
+  border: none;
+}
+
+.footer {
+  font-weight: 400;
+  font-size: 18px;
+  color: rgba(0, 0, 0, 0.2);
+  align-self: flex-start;
+  padding-left: 50px;
+}
+
+.footer button {
+  font-weight: 700;
+  color: #fff;
+  border: none;
+  background-color: transparent;
+  font-size: 18px;
+}
