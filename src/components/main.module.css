@@ -89,7 +89,6 @@ input:focus {
 
 .input_wrapper {
   position: relative;
-  /*color: #252525;*/
 }
 input {
   height: 48px;
@@ -107,7 +106,6 @@ span {
   position: absolute;
   left: 20px;
   top: 18px;
-  /*width: 50px;*/
   background: transparent;
   text-align: center;
   pointer-events: none;

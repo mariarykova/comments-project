@@ -1,6 +1,6 @@
 import { useState } from "react";
 import styles from "./main.module.css";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useUserAuth } from "../context/UserAuthContext";
 
 const Main = () => {
@@ -30,11 +30,9 @@ const Main = () => {
 
   return (
     <div className={styles.main}>
-      {/*<div className={styles.bg_imgs}>*/}
       <div className={styles.gradientImage}></div>
       <div className={styles.stars_top}></div>
       <div className={styles.stars_bottom}></div>
-      {/*</div>*/}
       <div className={styles.content_wrapper}>
         <div className={styles.form}>
           <h1>Sign Up</h1>
@@ -69,10 +67,6 @@ const Main = () => {
               Sign up
             </button>
           </form>
-          {/*<fieldset>
-          <legend>Full Name</legend>
-          <input type="text" name="name" placeholder="Name" />
-        </fieldset>*/}
         </div>
         <div className={styles.footer}>
           Already have an account?{" "}

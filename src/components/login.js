@@ -4,7 +4,6 @@ import { Link, useNavigate } from "react-router-dom";
 import { useUserAuth } from "../context/UserAuthContext";
 
 const Login = () => {
-  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -63,10 +62,6 @@ const Login = () => {
               Sign in
             </button>
           </form>
-          {/*<fieldset>
-            <legend>Full Name</legend>
-            <input type="text" name="name" placeholder="Name" />
-          </fieldset>*/}
         </div>
         <div className={styles.footer}>
           Don’t have account?{" "}

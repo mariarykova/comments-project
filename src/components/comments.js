@@ -4,12 +4,8 @@ import {
   getFirestore,
   collection,
   query,
-  orderBy,
-  limit,
-  getDocs,
   addDoc,
   serverTimestamp,
-  where,
   Timestamp,
   updateDoc,
   doc,
@@ -17,7 +13,6 @@ import {
 } from "firebase/firestore";
 import { v4 as uuidv4 } from "uuid";
 import app from "../firebase";
-
 import { formatDate } from "../lib/helpers";
 
 import styles from "./comments.module.css";
@@ -29,17 +24,13 @@ const Comments = () => {
   const [selectedItem, setSelectedItem] = useState(null);
   const menuItems = ["About", "Projects", "Testimonials", "Contact"];
   const commentsRef = collection(firestore, "comments");
-  const commentsQuery = query(commentsRef, orderBy("createdAt"), limit(50));
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState("");
   const [userEmail, setUserEmail] = useState(null);
   const [userId, setUserId] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-
   const [activeCommentId, setActiveCommentId] = useState(null);
   const [replyText, setReplyText] = useState("");
-
-  const [user, setUser] = useState(null);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -64,55 +55,29 @@ const Comments = () => {
     return () => unsubscribe();
   }, []);
 
-  //  useEffect(() => {
-  //    const fetchComments = async () => {
-  //      try {
-  //        if (!userEmail) return;
-
-  //        const commentsRef = collection(firestore, "comments");
-  //        const commentsQuery = query(
-  //          commentsRef,
-  //          where("userEmail", "==", userEmail),
-  //          orderBy("createdAt"),
-  //          limit(50)
-  //        );
-
-  //        const querySnapshot = await getDocs(commentsQuery);
-  //        const commentsList = querySnapshot.docs.map((doc) => doc.data());
-  //        setComments(commentsList);
-  //        setIsLoading(false);
-  //      } catch (error) {
-  //        console.error("Error fetching comments:", error);
-  //        setIsLoading(false);
-  //      }
-  //    };
-
-  //    fetchComments();
-  //  }, [userEmail]);
-
   const handleCommentClick = (commentId) => {
     setActiveCommentId(commentId);
   };
 
-  const handleKeyDown = (e, comment) => {
-    if (e.key === "Enter" && replyText.trim() !== "") {
-      onAddReply(comment, replyText);
-      setReplyText("");
-      setActiveCommentId(null);
-    }
-  };
+  const countReplies = (comment) => {
+    if (!comment.replies) return 0;
 
-  const handleReplyClick = (commentId) => {
-    setActiveCommentId(commentId);
+    let count = comment.replies.length;
+    comment.replies.forEach((reply) => {
+      if (reply.replies && reply.replies.length > 0) {
+        count += reply.replies.length;
+      }
+    });
+    return count;
   };
-
-  //  console.log("comments", comments);
 
   const renderComments = (comments, level = 1) => {
     return comments.map((comment, index) => (
       <div key={comment.id}>
         <div className={styles.firstReply}>
-          <div className={styles.avatar}>MR</div>
+          <div className={styles.avatar}>
+            {userEmail.charAt(0).toUpperCase()}
+          </div>
           <div
             className={styles.comment_reply}
             style={{ maxWidth: 662 - level * 100 }}
@@ -124,7 +89,10 @@ const Comments = () => {
             </div>
             <p>{comment.text}</p>
             <div className={styles.reply_footer}>
-              <div>
+              <div
+                className={styles.like}
+                onClick={(e) => handleLike(e, comment, level)}
+              >
                 <svg
                   width="18"
                   height="18"
@@ -139,31 +107,29 @@ const Comments = () => {
                 </svg>
                 <div>{comment.likes}</div>
               </div>
-              <div>
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 18 18"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    d="M15 1.5H3C2.17275 1.5 1.5 2.17275 1.5 3V16.5L5.49975 13.5H15C15.8273 13.5 16.5 12.8273 16.5 12V3C16.5 2.17275 15.8273 1.5 15 1.5ZM15 12H5.00025L3 13.5V3H15V12Z"
-                    fill="#9397AD"
-                  />
-                </svg>
-                <div>3</div>
-              </div>
+              {level < 3 ? (
+                <div>
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 18 18"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M15 1.5H3C2.17275 1.5 1.5 2.17275 1.5 3V16.5L5.49975 13.5H15C15.8273 13.5 16.5 12.8273 16.5 12V3C16.5 2.17275 15.8273 1.5 15 1.5ZM15 12H5.00025L3 13.5V3H15V12Z"
+                      fill="#9397AD"
+                    />
+                  </svg>
+                  <div>{countReplies(comment)}</div>
+                </div>
+              ) : (
+                <></>
+              )}
             </div>
           </div>
         </div>
 
-        {/*{console.log("activeCommentId", activeCommentId?.id)}
-        {console.log("comment.id", comment?.id)}*/}
-
-        {/*{console.log("level", level)}*/}
-
-        {/* Show input to answer */}
         {activeCommentId?.id === comment.id && (
           <div
             className={styles.firstReply}
@@ -174,7 +140,6 @@ const Comments = () => {
               className={styles.add_comment}
               value={replyText}
               onChange={(e) => setReplyText(e.target.value)}
-              //  onKeyDown={(e) => handleKeyDown(e, comment)}
               onKeyDown={(e) =>
                 e.key === "Enter" && handleReplySubmit(e, comment, level)
               }
@@ -183,12 +148,91 @@ const Comments = () => {
             />
           </div>
         )}
-        {/* Render comments second level */}
         {comment.replies && comment.replies.length > 0 && (
           <div>{renderComments(comment.replies, level + 1)}</div>
         )}
       </div>
     ));
+  };
+
+  const handleLike = async (e, comment, level) => {
+    e.preventDefault();
+
+    try {
+      const userId = auth.currentUser.uid;
+      let updatedLikes;
+      let updatedLikedBy;
+
+      if (comment.likedBy && comment.likedBy.includes(userId)) {
+        updatedLikes = comment.likes - 1;
+        updatedLikedBy = comment.likedBy.filter((id) => id !== userId);
+      } else {
+        updatedLikes = comment.likes + 1;
+        updatedLikedBy = comment.likedBy
+          ? [...comment.likedBy, userId]
+          : [userId];
+      }
+
+      const updatedComments = [...comments];
+
+      if (level === 1) {
+        const parentCommentIndex = updatedComments.findIndex(
+          (c) => c.id === comment.id
+        );
+        if (parentCommentIndex !== -1) {
+          updatedComments[parentCommentIndex].likes = updatedLikes;
+          updatedComments[parentCommentIndex].likedBy = updatedLikedBy;
+
+          const commentRef = doc(firestore, "comments", comment.id);
+          await updateDoc(commentRef, {
+            likes: updatedLikes,
+            likedBy: updatedLikedBy,
+          });
+        }
+      } else if (level === 2) {
+        updatedComments.forEach((firstLevelComment) => {
+          const replyIndex = firstLevelComment.replies.findIndex(
+            (reply) => reply.id === comment.id
+          );
+          if (replyIndex !== -1) {
+            firstLevelComment.replies[replyIndex].likes = updatedLikes;
+            firstLevelComment.replies[replyIndex].likedBy = updatedLikedBy;
+
+            const commentRef = doc(firestore, "comments", firstLevelComment.id);
+            updateDoc(commentRef, {
+              replies: firstLevelComment.replies,
+            });
+          }
+        });
+      } else if (level === 3) {
+        updatedComments.forEach((firstLevelComment) => {
+          firstLevelComment.replies.forEach((secondLevelReply) => {
+            const thirdLevelReplyIndex = secondLevelReply.replies.findIndex(
+              (reply) => reply.id === comment.id
+            );
+            if (thirdLevelReplyIndex !== -1) {
+              secondLevelReply.replies[thirdLevelReplyIndex].likes =
+                updatedLikes;
+              secondLevelReply.replies[thirdLevelReplyIndex].likedBy =
+                updatedLikedBy;
+
+              const commentRef = doc(
+                firestore,
+                "comments",
+                firstLevelComment.id
+              );
+              updateDoc(commentRef, {
+                replies: firstLevelComment.replies,
+              });
+            }
+          });
+        });
+      }
+
+      setComments(updatedComments);
+    } catch (error) {
+      console.error("Error updating likes:", error);
+    }
   };
 
   const addComment = async (e) => {
@@ -229,17 +273,9 @@ const Comments = () => {
   };
 
   const onAddReply = async (parentComment, newReplyText, level) => {
-    if (!parentComment || !parentComment.id) {
-      console.error("Parent comment is invalid or missing an ID.");
-      return;
-    }
+    if (!parentComment || !parentComment.id) return;
 
-    if (!newReplyText) {
-      console.error("Reply text is empty.");
-      return;
-    }
-
-    console.log("level", level);
+    if (!newReplyText) return;
 
     const specificDate = new Date();
     const newReply = {
@@ -248,14 +284,13 @@ const Comments = () => {
       userId,
       userEmail,
       likes: 0,
-      replies: level === 2 ? null : [], // replies должен быть массивом для всех уровней
+      replies: level === 2 ? null : [],
       id: uuidv4(),
-      parentId: parentComment.id, // для связи с родительским комментарием
+      parentId: parentComment.id,
     };
 
-    const updatedComments = [...comments]; // создаем копию комментариев
+    const updatedComments = [...comments];
 
-    // Добавляем комментарий на первый уровень
     if (level === 1) {
       const parentCommentIndex = updatedComments.findIndex(
         (comment) => comment.id === parentComment.id
@@ -269,18 +304,14 @@ const Comments = () => {
         updatedParentComment.replies.push(newReply);
         updatedComments[parentCommentIndex] = updatedParentComment;
 
-        // Обновляем комментарий первого уровня в Firestore
         const commentRef = doc(firestore, "comments", parentComment.id);
         await updateDoc(commentRef, {
           replies: updatedParentComment.replies,
         });
 
-        setComments(updatedComments); // обновляем состояние комментариев
+        setComments(updatedComments);
       }
-    }
-
-    // Добавляем комментарий на второй уровень
-    else if (level === 2) {
+    } else if (level === 2) {
       const parentIndex = updatedComments.findIndex(
         (comment) =>
           comment.replies &&
@@ -300,7 +331,6 @@ const Comments = () => {
           updatedParentComment.replies[replyIndex].replies.push(newReply);
           updatedComments[parentIndex] = updatedParentComment;
 
-          // Обновляем комментарий второго уровня в Firestore
           const commentRef = doc(
             firestore,
             "comments",
@@ -310,19 +340,18 @@ const Comments = () => {
             replies: updatedParentComment.replies,
           });
 
-          setComments(updatedComments); // обновляем состояние комментариев
+          setComments(updatedComments);
         }
       } else {
         console.error("Parent comment not found for second level.");
         return;
       }
-    }
-
-    // Добавляем комментарий на третий уровень
-    else if (level === 3) {
+    } else if (level === 3) {
       updatedComments.forEach((firstLevelComment) => {
         const secondLevelReplyIndex = firstLevelComment.replies.findIndex(
-          (reply) => reply.id === parentComment.id
+          (comment) =>
+            comment.replies &&
+            comment.replies.some((reply) => reply.id === parentComment.id)
         );
 
         if (secondLevelReplyIndex !== -1) {
@@ -333,7 +362,6 @@ const Comments = () => {
             newReply
           );
 
-          // Обновляем комментарий второго уровня в Firestore
           const commentRef = doc(firestore, "comments", firstLevelComment.id);
           updateDoc(commentRef, {
             replies: firstLevelComment.replies,
@@ -341,375 +369,11 @@ const Comments = () => {
         }
       });
 
-      setComments(updatedComments); // обновляем состояние комментариев
-    }
-
-    try {
-      // Лог для отладки
-      console.log("Comments successfully updated in Firestore");
-    } catch (error) {
-      console.error("Error updating document:", error);
-    }
-  };
-
-  //  const onAddReply = async (parentComment, newReplyText, level) => {
-  //    if (!parentComment || !parentComment.id) {
-  //      console.error("Parent comment is invalid or missing an ID.");
-  //      return;
-  //    }
-
-  //    if (!newReplyText) {
-  //      console.error("Reply text is empty.");
-  //      return;
-  //    }
-
-  //    const specificDate = new Date();
-  //    const newReply = {
-  //      text: newReplyText,
-  //      createdAt: Timestamp.fromDate(specificDate),
-  //      userId,
-  //      userEmail,
-  //      likes: 0,
-  //      replies: [], // replies будет массивом для всех уровней
-  //      id: uuidv4(),
-  //      parentId: parentComment.id,
-  //    };
-
-  //    const updatedComments = [...comments];
-
-  //    console.log("updatedComments", updatedComments);
-
-  //    // Поиск родительского комментария на первом уровне
-  //    const parentCommentIndex = updatedComments.findIndex(
-  //      (comment) => comment.id === parentComment.id
-  //    );
-
-  //    if (level === 1 && parentCommentIndex !== -1) {
-  //      // Добавляем ответ в комментарий первого уровня
-  //      const updatedParentComment = { ...updatedComments[parentCommentIndex] };
-  //      if (!updatedParentComment.replies) {
-  //        updatedParentComment.replies = [];
-  //      }
-  //      updatedParentComment.replies.push(newReply);
-  //      updatedComments[parentCommentIndex] = updatedParentComment;
-  //    } else if (level === 2) {
-  //      // Ищем родительский комментарий второго уровня в replies первого уровня
-  //      const parentIndex = updatedComments.findIndex(
-  //        (comment) =>
-  //          comment.replies &&
-  //          comment.replies.some((reply) => reply.id === parentComment.id)
-  //      );
-
-  //      if (parentIndex !== -1) {
-  //        const updatedParentComment = { ...updatedComments[parentIndex] };
-  //        const replyIndex = updatedParentComment.replies.findIndex(
-  //          (reply) => reply.id === parentComment.id
-  //        );
-
-  //        if (replyIndex !== -1) {
-  //          if (!updatedParentComment.replies[replyIndex].replies) {
-  //            updatedParentComment.replies[replyIndex].replies = [];
-  //          }
-  //          updatedParentComment.replies[replyIndex].replies.push(newReply);
-  //          updatedComments[parentIndex] = updatedParentComment;
-  //        }
-  //      } else {
-  //        console.error("Parent comment not found for second level.");
-  //        return;
-  //      }
-  //    } else if (level === 3) {
-  //      // Для третьего уровня — добавляем ответ в replies второго уровня
-  //      updatedComments.forEach((firstLevelComment) => {
-  //        const secondLevelReplyIndex = firstLevelComment.replies.findIndex(
-  //          (reply) => reply.id === parentComment.id
-  //        );
-  //        if (secondLevelReplyIndex !== -1) {
-  //          if (!firstLevelComment.replies[secondLevelReplyIndex].replies) {
-  //            firstLevelComment.replies[secondLevelReplyIndex].replies = [];
-  //          }
-  //          firstLevelComment.replies[secondLevelReplyIndex].replies.push(
-  //            newReply
-  //          );
-  //        }
-  //      });
-  //    }
-
-  //    try {
-  //      // Обновляем родительский комментарий в Firestore
-  //      const commentRef = doc(firestore, "comments", parentComment.id);
-  //      await updateDoc(commentRef, {
-  //        replies: updatedComments[parentCommentIndex]?.replies || [],
-  //      });
-
-  //      setComments(updatedComments); // Обновляем состояние
-  //    } catch (error) {
-  //      console.error("Error updating document: ", error);
-  //    }
-  //  };
-
-  //  const onAddReply = async (parentComment, newReplyText, level) => {
-  //    if (!parentComment || !parentComment.id) {
-  //      console.error("Parent comment is invalid or missing an ID.");
-  //      return;
-  //    }
-
-  //    console.log("parentComment", parentComment);
-
-  //    if (!newReplyText) {
-  //      console.error("Reply text is empty.");
-  //      return;
-  //    }
-
-  //    const specificDate = new Date();
-  //    const newReply = {
-  //      text: newReplyText,
-  //      createdAt: Timestamp.fromDate(specificDate),
-  //      userId,
-  //      userEmail,
-  //      likes: 0,
-  //      replies: [], // replies будет массивом для всех уровней
-  //      id: uuidv4(),
-  //    };
-
-  //    const updatedComments = [...comments];
-  //    console.log("updatedComments", updatedComments);
-  //    // Поиск индекса родительского комментария на первом уровне
-  //    const parentCommentIndex = updatedComments.findIndex(
-  //      (comment) => comment.id === parentComment.id
-  //    );
-
-  //    if (parentCommentIndex === -1) {
-  //      console.error("Parent comment not found.");
-  //      return; // Прекращаем выполнение, если комментарий не найден
-  //    }
-
-  //    // Инициализируем replies, если их нет
-  //    const updatedParentComment = { ...updatedComments[parentCommentIndex] };
-  //    if (!updatedParentComment.replies) {
-  //      updatedParentComment.replies = [];
-  //    }
-
-  //    if (level === 1) {
-  //      // Добавляем ответ в комментарий первого уровня
-  //      updatedParentComment.replies.push(newReply);
-  //      updatedComments[parentCommentIndex] = updatedParentComment;
-  //    } else if (level === 2) {
-  //      // Находим родительский комментарий второго уровня
-  //      const replyIndex = updatedParentComment.replies.findIndex(
-  //        (reply) => reply.id === parentComment.id
-  //      );
-
-  //      if (replyIndex !== -1) {
-  //        // Инициализируем replies второго уровня, если их нет
-  //        if (!updatedParentComment.replies[replyIndex].replies) {
-  //          updatedParentComment.replies[replyIndex].replies = [];
-  //        }
-  //        updatedParentComment.replies[replyIndex].replies.push(newReply);
-  //      } else {
-  //        // Если это ответ на второй уровень, добавляем его в replies первого уровня
-  //        updatedParentComment.replies.push(newReply);
-  //      }
-  //      updatedComments[parentCommentIndex] = updatedParentComment;
-  //    } else if (level === 3) {
-  //      // Для третьего уровня — добавляем ответ в replies второго уровня
-  //      updatedComments.forEach((firstLevelComment) => {
-  //        const secondLevelReplyIndex = firstLevelComment.replies.findIndex(
-  //          (reply) => reply.id === parentComment.id
-  //        );
-  //        if (secondLevelReplyIndex !== -1) {
-  //          if (!firstLevelComment.replies[secondLevelReplyIndex].replies) {
-  //            firstLevelComment.replies[secondLevelReplyIndex].replies = [];
-  //          }
-  //          firstLevelComment.replies[secondLevelReplyIndex].replies.push(
-  //            newReply
-  //          );
-  //        }
-  //      });
-  //    }
-
-  //    try {
-  //      // Обновляем родительский комментарий в Firestore
-  //      const commentRef = doc(firestore, "comments", parentComment.id);
-  //      await updateDoc(commentRef, {
-  //        replies: updatedParentComment.replies,
-  //      });
-
-  //      setComments(updatedComments); // Обновляем состояние
-  //    } catch (error) {
-  //      console.error("Error updating document: ", error);
-  //    }
-  //  };
-
-  //  const onAddReply = async (parentComment, newReplyText, level) => {
-  //    if (!parentComment || !parentComment.id) {
-  //      console.error("Parent comment is invalid or missing an ID.");
-  //      return;
-  //    }
-
-  //    if (!newReplyText) {
-  //      console.error("Reply text is empty.");
-  //      return;
-  //    }
-
-  //    const specificDate = new Date();
-  //    const newReply = {
-  //      text: newReplyText,
-  //      createdAt: Timestamp.fromDate(specificDate),
-  //      userId,
-  //      userEmail,
-  //      likes: 0,
-  //      replies: [], // replies массив для всех уровней
-  //      id: uuidv4(),
-  //    };
-
-  //    const updatedComments = [...comments];
-
-  //    // Поиск индекса родительского комментария на первом уровне
-  //    const parentCommentIndex = updatedComments.findIndex(
-  //      (comment) => comment.id === parentComment.id
-  //    );
-
-  //    if (level === 1 && parentCommentIndex !== -1) {
-  //      // Добавляем ответ в комментарий первого уровня
-  //      const updatedParentComment = { ...updatedComments[parentCommentIndex] };
-  //      if (!updatedParentComment.replies) {
-  //        updatedParentComment.replies = []; // Инициализируем replies, если их нет
-  //      }
-  //      updatedParentComment.replies.push(newReply);
-  //      updatedComments[parentCommentIndex] = updatedParentComment;
-  //    } else if (level === 2) {
-  //      // Ищем родительский комментарий второго уровня
-  //      const parentIndex = updatedComments.findIndex(
-  //        (comment) => comment.id === parentComment.id
-  //      );
-
-  //      if (parentIndex !== -1) {
-  //        const updatedParentComment = { ...updatedComments[parentIndex] };
-  //        const replyIndex = updatedParentComment.replies.findIndex(
-  //          (reply) => reply.id === parentComment.id
-  //        );
-
-  //        if (replyIndex !== -1) {
-  //          if (!updatedParentComment.replies[replyIndex].replies) {
-  //            updatedParentComment.replies[replyIndex].replies = []; // Инициализируем replies
-  //          }
-  //          updatedParentComment.replies[replyIndex].replies.push(newReply);
-  //          updatedComments[parentIndex] = updatedParentComment;
-  //        }
-  //      }
-  //    } else if (level === 3) {
-  //      // Для третьего уровня — добавляем ответ в replies второго уровня
-  //      updatedComments.forEach((firstLevelComment) => {
-  //        const secondLevelReplyIndex = firstLevelComment.replies.findIndex(
-  //          (reply) => reply.id === parentComment.id
-  //        );
-  //        if (secondLevelReplyIndex !== -1) {
-  //          if (!firstLevelComment.replies[secondLevelReplyIndex].replies) {
-  //            firstLevelComment.replies[secondLevelReplyIndex].replies = []; // Инициализируем replies
-  //          }
-  //          firstLevelComment.replies[secondLevelReplyIndex].replies.push(
-  //            newReply
-  //          );
-  //        }
-  //      });
-  //    }
-
-  //    try {
-  //      // Обновляем родительский комментарий в Firestore
-  //      const commentRef = doc(firestore, "comments", parentComment.id);
-  //      await updateDoc(commentRef, {
-  //        replies: updatedComments[parentCommentIndex].replies,
-  //      });
-
-  //      setComments(updatedComments); // Обновляем состояние
-  //    } catch (error) {
-  //      console.error("Error updating document: ", error);
-  //    }
-  //  };
-
-  const onAddReplyOnlySecondLevel = async (
-    parentComment,
-    newReplyText,
-    level
-  ) => {
-    if (!parentComment || !parentComment.id) {
-      console.error("Parent comment is invalid or missing an ID.");
-      return;
-    }
-
-    if (!newReplyText) {
-      console.error("Reply text is empty.");
-      return;
-    }
-
-    const specificDate = new Date();
-    const newReply = {
-      text: newReplyText,
-      createdAt: Timestamp.fromDate(specificDate),
-      userId,
-      userEmail,
-      likes: 0,
-      replies: [],
-      id: uuidv4(),
-    };
-
-    const updatedComments = [...comments];
-    console.log("updatedComments", updatedComments);
-    const parentCommentIndex = updatedComments.findIndex(
-      (comment) => comment.id === parentComment.id
-    );
-
-    console.log("parentCommentIndex", parentCommentIndex);
-
-    if (parentCommentIndex !== -1) {
-      const updatedParentComment = { ...updatedComments[parentCommentIndex] };
-
-      // Проверяем и инициализируем массив replies, если его нет
-      if (!updatedParentComment.replies) {
-        updatedParentComment.replies = [];
-      }
-
-      if (level === 1) {
-        // Добавляем ответ в комментарий первого уровня
-        updatedParentComment.replies.push(newReply);
-      } else if (level === 2) {
-        // Добавляем ответ в комментарий второго уровня
-        const replyIndex = updatedParentComment.replies.findIndex(
-          (reply) => reply.id === parentComment.id
-        );
-
-        if (replyIndex !== -1) {
-          // Убедимся, что replies второго уровня — это массив
-          if (!updatedParentComment.replies[replyIndex].replies) {
-            updatedParentComment.replies[replyIndex].replies = [];
-          }
-          updatedParentComment.replies[replyIndex].replies.push(newReply);
-        } else {
-          // Добавляем новый ответ на втором уровне
-          updatedParentComment.replies.push(newReply);
-        }
-      } else {
-        // Если это третий уровень, добавляем ответ в replies третьего уровня (к этому же уровню)
-        updatedParentComment.replies.push(newReply);
-      }
-
-      try {
-        // Обновляем родительский комментарий в Firestore
-        const commentRef = doc(firestore, "comments", parentComment.id);
-        await updateDoc(commentRef, {
-          replies: updatedParentComment.replies, // Обновляем массив replies
-        });
-
-        updatedComments[parentCommentIndex] = updatedParentComment;
-        setComments(updatedComments); // Обновляем состояние
-      } catch (error) {
-        console.error("Error updating document: ", error);
-      }
+      setComments(updatedComments);
     }
   };
 
   const handleReplySubmit = (e, comment, level) => {
-    console.log(e, comment, level);
     e.preventDefault();
     if (replyText.trim() === "") return;
 
@@ -717,8 +381,6 @@ const Comments = () => {
     setReplyText("");
     setActiveCommentId(null);
   };
-
-  console.log("comments", comments);
 
   return (
     <div className={styles.comments}>
